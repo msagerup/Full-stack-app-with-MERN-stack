@@ -6,6 +6,11 @@ const jwt = require("jsonwebtoken");
 const keys = require("../../config/keys");
 const passport = require("passport");
 
+// Load input validator / Register / Checks if there is value in forms submits
+const validateRegisterInput = require("../../validation/register");
+// Load input validator / Login / Checks if there is value in forms submits
+const validateLoginInput = require("../../validation/login");
+
 // Load User model
 const User = require("../models/User");
 
@@ -18,13 +23,23 @@ router.get("/test", (req, res) => res.json({ msg: "Users Works" }));
 // @desc    Register a user
 // access   Public
 router.post("/register", (req, res) => {
+  // Check for errors from the validateRegisterInput function, from register.js
+  // the data is send trough the is-empty.js
+  const { errors, isValid } = validateRegisterInput(req.body);
+
+  if (!isValid) {
+    // If the input is not valid it sends the entire errors object from register.js
+    return res.status(400).json(errors);
+  }
   // Since its connected to the Schema for mongoose, I can use
   // findOne() . This checks to see if there is a record in the DB of what the function is
   // searching for, defined in the object.
   User.findOne({ email: req.body.email }).then(user => {
     if (user) {
       // if there is an email in the DB, throw an 400 status.
-      return res.status(400).json({ email: "Email already exists" });
+      // Taken from the errors object used in register.js and login.js
+      errors.email = "Email already exists";
+      return res.status(400).json(errors);
     } else {
       // This just loads the Gravatar imgage library.
       // If the user has a gravatar it will use that image.
@@ -66,6 +81,12 @@ router.post("/register", (req, res) => {
 // access   Public
 
 router.post("/login", (req, res) => {
+  const { errors, isValid } = validateLoginInput(req.body);
+
+  if (!isValid) {
+    // If the input is not valid it sends the entire errors object from register.js
+    return res.status(400).json(errors);
+  }
   // Remember when sending a form it will be a req.body because we use body parser (npm)
   const email = req.body.email;
   const password = req.body.password;
@@ -74,7 +95,8 @@ router.post("/login", (req, res) => {
   User.findOne({ email: email }).then(user => {
     // If there is no user, send 404, not found
     if (!user) {
-      return res.status(404).json({ email: "User not found" });
+      errors.email = "User not found";
+      return res.status(404).json(errors);
     }
 
     // Check Password using bcrypt
@@ -106,7 +128,8 @@ router.post("/login", (req, res) => {
           );
           // If it's not true, send a 400 and a message
         } else {
-          return res.status(400).json({ password: "Password is incorrect" });
+          errors.password = "Password is incorrect";
+          return res.status(400).json(errors);
         }
       });
   });
@@ -121,6 +144,7 @@ router.get(
   passport.authenticate("jwt", { session: false }),
   (req, res) => {
     res.json({
+      // Sends this back after getting and validating the web token
       id: req.user.id,
       name: req.user.name,
       email: req.user.email
