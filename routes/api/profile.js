@@ -3,6 +3,9 @@ const router = express.Router();
 const mongoose = require("mongoose");
 const passport = require("passport");
 
+// Load Validation
+const validateProfileInput = require("../../validation/profile");
+
 // Load Profile model from models/Profile.js
 const profile = require("../models/Profile");
 // Load User model from models/User.js
@@ -14,7 +17,7 @@ const User = require("../models/User");
 router.get("/test", (req, res) => res.json({ msg: "Profile Works" }));
 
 // @route   GET /api/profile
-// @desc    Tests profile route
+// @desc    Get current user profile
 // access   Private
 router.get(
   "/",
@@ -24,6 +27,7 @@ router.get(
     // Since this is a protected route we will search for the user id
     // that is loged in
     Profile.findOne({ user: req.user.id })
+      .populate("user", ["name", "avatar"])
       .then(profile => {
         // If there is no profile return this:
         if (!profile) {
@@ -41,10 +45,19 @@ router.get(
 // @route   POST /api/profile
 // @desc    Create or edit User profile
 // access   Private
-router.get(
+router.post(
   "/",
   passport.authenticate("jwt", { session: false }),
   (req, res) => {
+    //Destructuring
+    const { errors, isValid } = validateProfileInput(req.body);
+
+    // Check Validation
+    if (!isValid) {
+      // return any errors with 400 status
+      return res.status(400).json(errors);
+    }
+
     // Get fields to register profile
     // Set empty object and then put the req into that object
     const profileFields = {};
@@ -58,7 +71,7 @@ router.get(
     }
     // Same as above, just oneliners
     if (req.body.company) profileFields.company = req.body.company;
-    if (req.body.website) profileFields.website = req.body.webiste;
+    if (req.body.website) profileFields.website = req.body.website;
     if (req.body.location) profileFields.location = req.body.location;
     if (req.body.bio) profileFields.bio = req.body.bio;
     if (req.body.status) profileFields.status = req.body.status;
@@ -79,7 +92,7 @@ router.get(
     if (req.body.instagram) profileFields.social.instagram = req.body.instagram;
 
     // Check to see if there is a profile allready, if there is one edit and load stuff
-    Profile.fineOne({ user: req.user.id }).then(profile => {
+    Profile.findOne({ user: req.user.id }).then(profile => {
       if (profile) {
         // If there is a profile, update fields
         Profile.findOneAndUpdate(
