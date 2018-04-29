@@ -5,6 +5,7 @@ const passport = require("passport");
 
 // Load Validation
 const validateProfileInput = require("../../validation/profile");
+const validateExperienceInput = require("../../validation/experience");
 
 // Load Profile model from models/Profile.js
 const profile = require("../models/Profile");
@@ -116,7 +117,7 @@ router.post(
   "/",
   passport.authenticate("jwt", { session: false }),
   (req, res) => {
-    //Destructuring
+    //Destructuring, bring in validation
     const { errors, isValid } = validateProfileInput(req.body);
 
     // Check Validation
@@ -182,6 +183,42 @@ router.post(
           new Profile(profileFields).save().then(profile => res.json(profile));
         });
       }
+    });
+  }
+);
+
+// @route   Post /api/profile/experience
+// @desc    Add Experience to profile
+// access   Privat
+
+router.post(
+  "/experience",
+  passport.authenticate("jwt", { sessoion: false }),
+  (req, res) => {
+    Profile.findOne({ user: req.user.id }).then(profile => {
+      // Bring in Validation
+      const { errors, isValid } = validateExperienceInput(req.body);
+      // Check Validation
+      if (!isValid) {
+        // return any errors with 400 status
+        return res.status(400).json(errors);
+      }
+      // This is what we want the users to be able to add.
+      // This will have to be added to the Profile Scheema
+      const newExp = {
+        title: req.body.title,
+        company: req.body.company,
+        location: req.body.location,
+        from: req.body.from,
+        to: req.body.to,
+        current: req.body.current,
+        description: req.body.description
+      };
+
+      // Add to experience array in the Profile Schema
+      profile.experience.unshift(newExp);
+      // Saves the profile, then returns the profile with the new experience
+      profile.save().then(profile => res.json(profile));
     });
   }
 );
