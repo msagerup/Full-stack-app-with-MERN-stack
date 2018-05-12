@@ -1,6 +1,9 @@
 import React, { Component } from "react";
+import PropTypes from "prop-types";
+import { withRouter } from "react-router-dom";
 import classnames from "classnames";
-import axios from "axios";
+import { connect } from "react-redux";
+import { registerUser } from "../../actions/authActions";
 
 class Register extends Component {
   constructor() {
@@ -15,6 +18,15 @@ class Register extends Component {
     this.onChange = this.onChange.bind(this);
     this.onSubmit = this.onSubmit.bind(this);
   }
+  // Takes the errors feedback from redux and set it to to component state
+  componentWillReceiveProps(nextProps) {
+    if (nextProps.errors) {
+      this.setState({
+        errors: nextProps.errors
+      });
+    }
+  }
+
   // Change the input values and set it to state
   onChange(e) {
     this.setState({ [e.target.name]: e.target.value });
@@ -28,14 +40,15 @@ class Register extends Component {
       password: this.state.password,
       password2: this.state.password2
     };
-    axios
-      .post("api/users/register", newUser)
-      .then(res => console.log(res.data))
-      .catch(err => this.setState({ errors: err.response.data }));
+    // this.props.history is to be able to redirect with the action, liked to the
+    // export function at the bottom
+    this.props.registerUser(newUser, this.props.history);
   }
 
   render() {
+    // Same as const errors = this.state.errors
     const { errors } = this.state;
+
     return (
       <div className="register">
         <div className="container">
@@ -120,4 +133,19 @@ class Register extends Component {
   }
 }
 
-export default Register;
+// Using props types
+Register.propTypes = {
+  registerUser: PropTypes.func.isRequired,
+  auth: PropTypes.object.isRequired,
+  errors: PropTypes.object.isRequired
+};
+
+const mapStatetoProps = state => ({
+  auth: state.auth,
+  errors: state.errors
+});
+
+// To redirect to the Register component we need to user withRouter,
+// Since this is beeing called from the Redux action, authActions
+
+export default connect(mapStatetoProps, { registerUser })(withRouter(Register));
